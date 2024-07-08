@@ -13,13 +13,36 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
+    // public function store(LoginRequest $request): Response
+    // {
+    //     $request->authenticate();
+    //     if (Auth::user()->type !== 1) {
+    //         Auth::logout();
+    //         return response()->json(['message' => 'Access denied.......'], 403);
+            
+    //     }
+
+    //     $request->session()->regenerate();
+
+    //     return response()->noContent();
+    // }
     public function store(LoginRequest $request): Response
     {
-        $request->authenticate();
+        try {
+            $request->authenticate();
 
-        $request->session()->regenerate();
+            if (Auth::user()->type !== 1) {
+                Auth::logout();
+                return new Response(['message' => 'Access denied.'], 403);
+            }
 
-        return response()->noContent();
+            $request->session()->regenerate();
+
+            return new Response(null, 204);
+        } catch (\Exception $e) {
+            \Log::error('Login error: ' . $e->getMessage());
+            return new Response(['message' => 'Internal Server Error.'], 500);
+        }
     }
 
     /**
