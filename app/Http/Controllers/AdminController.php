@@ -6,19 +6,19 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 
+use Carbon\Carbon;
 
 class AdminController extends Controller
 {
     public function dashboard(Request $request)
     {
-        // Example logic to fetch admin dashboard data
+        
         $user = $request->user();
 
-        if ($user->type === 1) { // Assuming admin role is type 1
+        if ($user->type === 1) { 
             $data = [
                 'message' => 'Welcome to admin dashboard!',
                 'user' => $user,
-                // Add more data as needed
             ];
             return response()->json($data);
         } else {
@@ -28,10 +28,45 @@ class AdminController extends Controller
     }
 
 //show users
-public function getUsers()
+// public function getUsers()
+// {
+//     try {
+//         $users = User::all();
+//         return response()->json(['users' => $users]);
+//     } catch (\Exception $e) {
+//         \Log::error('Error fetching users: ' . $e->getMessage());
+//         return response()->json(['error' => 'Server Error'], 500);
+//     }
+// }
+public function getUsers(Request $request)
 {
     try {
-        $users = User::all();
+        \Log::info('Fetching users with filters', $request->all());
+
+        $query = User::query()->where('type', 0);
+
+        if ($request->has('name') && $request->input('name') != '') {
+            $name = $request->input('name');
+            $query->where(function($q) use ($name) {
+                $q->where('first_name', 'like', '%' . $name . '%')
+                  ->orWhere('last_name', 'like', '%' . $name . '%');
+            });
+            \Log::info('Name filter applied', ['name' => $name]);
+        }
+
+        if ($request->has('birthdate') && $request->input('birthdate') != '') {
+            $birthdate = $request->input('birthdate');
+            $query->whereDate('birthdate', $birthdate);
+            \Log::info('Birthdate filter applied', ['birthdate' => $birthdate]);
+        }
+
+        $users = $query->get();
+        \Log::info('Users fetched', ['users' => $users]);
+
+        if ($users->isEmpty()) {
+            return response()->json(['message' => 'No users found'], 404);
+        }
+
         return response()->json(['users' => $users]);
     } catch (\Exception $e) {
         \Log::error('Error fetching users: ' . $e->getMessage());
@@ -40,32 +75,15 @@ public function getUsers()
 }
 
 
-//add users
-// public function addUser(Request $request)
-// {
-//     $validated = $request->validate([
-//         'name' => 'required|string|max:255',
-//         'email' => 'required|string|email|max:255|unique:users',
-//         // 'password' => 'required|string|min:8',
-//         // 'type' => 'required|integer', // Assuming 'type' field for user type
-//     ]);
 
-//     $user = User::create([
-//         'name' => $validated['name'],
-//         'email' => $validated['email'],
-//         // 'password' => bcrypt($validated['password']),
-//         // 'type' => $validated['type'],
-//     ]);
 
-//     return response()->json(['user' => $user], 201);
-// }
 public function addUser(Request $request)
 {
     $validator = Validator::make($request->all(), [
         'first_name' => 'required|string|max:255',
         'last_name' => 'required|string|max:255',
         'email' => 'required|string|email|max:255|unique:users',
-        'birthdate' => 'required|date',
+        'birthdate' => 'required|date_format:Y-m-d',
         'phone' => 'nullable|string|max:20',
     ]);
 
@@ -74,15 +92,21 @@ public function addUser(Request $request)
     }
 
     try {
-        $user = User::create([
-            'first_name' => $request->input('first_name'),
-            'last_name' => $request->input('last_name'),
-            'email' => $request->input('email'),
-            'birthdate' => $request->input('birthdate'),
-            'phone' => $request->input('phone'),
-            // 'type' => 0, // Default type to 0
-            'password' => bcrypt('12345679'), // Ensure the password is hashed
-        ]);
+ 
+ \Log::info('Received birthdate:', ['birthdate' => $request->input('birthdate')]);
+
+
+ // Create a new user
+ $user = new User();
+ $user->first_name = $request->input('first_name');
+ $user->last_name = $request->input('last_name');
+ $user->email = $request->input('email');
+ $user->phone = $request->input('phone');
+ $user->birthdate = $request->input('birthdate');
+ $user->password = bcrypt($request->input('password'));
+ $user->save();
+
+
 
         return response()->json(['user' => $user], 201);
     } catch (\Exception $e) {
@@ -118,7 +142,12 @@ public function updateUser(Request $request, $id)
 
     try {
         $user = User::findOrFail($id);
-        $user->update($request->all());
+        $user->first_name = $request->input('first_name');
+        $user->last_name = $request->input('last_name');
+        $user->email = $request->input('email');
+        $user->phone = $request->input('phone');
+        $user->birthdate = $request->input('birthdate');
+        $user->save();
 
         return response()->json(['user' => $user], 200);
     } catch (\Exception $e) {
@@ -139,5 +168,26 @@ public function deleteUser($id)
         return response()->json(['error' => 'Server Error', 'message' => $e->getMessage()], 500);
     }
 }
+
+// public function search(Request $request)
+// {
+//     try {
+//         $query = $request->input('query');
+
+//         $users = User::where('first_name', 'LIKE', "%$query%")->get();
+
+//         return response()->json(['users' => $users]);
+//     } catch (\Exception $e) {
+//         \Log::error('Error searching users: ' . $e->getMessage());
+//         return response()->json(['error' => 'An error occurred while searching for users'], 500);
+//     }
+// }
+
+
+
+
+
+
+
 
 }

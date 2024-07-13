@@ -17,10 +17,7 @@ Route::get('/', function () {
     return ['Laravel' => app()->version()];
 });
 
-// Route::group(['middleware' => ['auth', 'admin']], function () {
-//     Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
-//     // Add other admin routes here
-// });
+
 
 
 require __DIR__.'/auth.php';
